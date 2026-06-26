@@ -1,0 +1,164 @@
+/* ============================================================
+   KDS — Kitchen Display System Design Tokens & Base Styles
+   Vellum & Oxblood palette · Light + Dark modes
+   ============================================================ */
+
+/* ── LIGHT MODE TOKENS ─────────────────────────────────────── */
+:root {
+  --kds-vellum:   #fff9eb;
+  --kds-linen:    #f0e7d7;
+  --kds-ink:      #000000;
+  --kds-graphite: #4d4b47;
+  --kds-oxblood:  #370808;
+  --kds-border:   #370808;
+  --kds-gold:     #f8e47d;
+  --kds-red:      #c0392b;
+  --kds-green:    #1e6b3a;
+  --kds-buttered-gold: #fff8d6;
+
+  --kds-font-display: 'Libre Caslon Text', Georgia, serif;
+  --kds-font-ui:      'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  --kds-r: 5px;
+  --kds-b: 1px solid var(--kds-border);
+  --kds-hh: 56px;
+  --kds-ch: 38px;
+}
+
+/* ── DARK MODE OVERRIDES ────────────────────────────────────── */
+[data-kds-theme="dark"] {
+  --kds-vellum:   #0f0d09;
+  --kds-linen:    #1d1810;
+  --kds-ink:      #f0e4cc;
+  --kds-graphite: #8a8070;
+  --kds-oxblood:  #9e2820;
+  --kds-border:   #3a2718;
+  --kds-gold:     #c09a28;
+  --kds-red:      #c83428;
+  --kds-green:    #2e8040;
+  --kds-buttered-gold: #3a331a;
+}
+
+/* ── KDS BASE ───────────────────────────────────────────────── */
+.kds-root {
+  font-family: var(--kds-font-ui);
+  background: var(--kds-vellum);
+  color: var(--kds-ink);
+  height: 100dvh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── ANIMATIONS ─────────────────────────────────────────────── */
+@keyframes kds-glide-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kds-swipe-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(20px); }
+}
+
+@keyframes kds-modal-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* SLA urgent — calm amber pulse, no jarring flash */
+@keyframes kds-sla-urgent-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248, 228, 125, 0); }
+  50%       { box-shadow: 0 0 0 3px rgba(248, 228, 125, 0.55); }
+}
+
+/* SLA breach — steady red glow */
+@keyframes kds-sla-breach-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0); }
+  50%       { box-shadow: 0 0 0 4px rgba(192, 57, 43, 0.4); }
+}
+
+.kds-glide-in  { animation: kds-glide-in  0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+.kds-swipe-out { animation: kds-swipe-out 0.25s cubic-bezier(0.25, 1, 0.5, 1) forwards; pointer-events: none; }
+.kds-modal-in  { animation: kds-modal-in  0.3s  cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+
+.kds-sla-urgent { animation: kds-sla-urgent-pulse 2s ease-in-out infinite; }
+.kds-sla-breach { animation: kds-sla-breach-glow  1.5s ease-in-out infinite; }
+
+/* ── SCROLLBARS ─────────────────────────────────────────────── */
+.kds-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--kds-linen) transparent;
+  overflow-y: auto;
+}
+.kds-scroll::-webkit-scrollbar { width: 3px; }
+.kds-scroll::-webkit-scrollbar-thumb { background: var(--kds-oxblood); border-radius: 2px; }
+
+/* ── STATION SEGMENT BARS ───────────────────────────────────── */
+.kds-sl-segment {
+  flex: 1; height: 100%;
+  border: var(--kds-b);
+  background: var(--kds-linen);
+  border-radius: 1px;
+}
+.kds-sl-segment.filled { background: var(--kds-oxblood); }
+.kds-sl-track.overloaded .kds-sl-segment.filled { background: var(--kds-red); }
+
+/* ── INTERACTIVE HOVER ──────────────────────────────────────── */
+.kds-interactive {
+  transition: opacity 0.15s, background-color 0.15s, border-color 0.15s;
+}
+.kds-interactive:hover { filter: brightness(0.96); }
+
+/* ── DRAG AND DROP ──────────────────────────────────────────── */
+.kds-queue-card.dragging { opacity: 0.4; border: 1.5px dashed var(--kds-graphite) !important; }
+.kds-queue-card.drag-over { border: 1.5px dashed var(--kds-oxblood) !important; background: rgba(55,8,8,0.05); }
+
+/* ── ITEM ROW STATES ────────────────────────────────────────── */
+.kds-item-row.state-hold      { border: 1px dashed rgba(55,8,8,0.3); opacity: 0.7; }
+.kds-item-row.state-cooking   { opacity: 1; }
+.kds-item-row.state-queued    { background: rgba(248,228,125,0.38); border: 1px solid var(--kds-gold); }
+.kds-item-row.state-done      { opacity: 0.55; }
+
+[data-kds-theme="dark"] .kds-item-row.state-queued {
+  background: rgba(192,154,40,0.22);
+  border-color: var(--kds-gold);
+}
+
+/* ── REJECT REASON ROW ──────────────────────────────────────── */
+.kds-reject-row { transition: background 0.12s, border-color 0.12s; }
+.kds-reject-row.selected { border-color: var(--kds-oxblood); background: var(--kds-vellum); }
+.kds-reject-row.selected .kds-reject-radio { background: var(--kds-oxblood); border-color: var(--kds-oxblood); }
+
+/* ── READY-TO-PACK CARD ─────────────────────────────────────── */
+.kds-ready-to-pack {
+  background-color: var(--kds-buttered-gold) !important;
+  border-color: var(--kds-gold) !important;
+}
+
+/* ── HOLD SUGGESTION ────────────────────────────────────────── */
+.kds-suggest-hold {
+  border-color: var(--kds-gold) !important;
+  color: var(--kds-ink) !important;
+  background: rgba(248, 228, 125, 0.25) !important;
+}
+
+/* ── QUEUE LINKED HIGHLIGHT ─────────────────────────────────── */
+.kds-linked-highlight {
+  border-color: var(--kds-oxblood) !important;
+  background-color: var(--kds-buttered-gold) !important;
+}
+
+/* ── ORDER NUMBER DISPLAY ───────────────────────────────────── */
+.kds-ordnum {
+  font-family: 'Libre Caslon Text', serif;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+/* ── COUNTDOWN DISPLAY ──────────────────────────────────────── */
+.kds-countdown {
+  font-family: 'Libre Caslon Text', serif;
+  font-weight: 400;
+  line-height: 1;
+}
