@@ -38,7 +38,7 @@ function getGroupPrepCandidates(station: string, orders: Record<string, KDSOrder
 }
 
 function updateCapacity(state: KDSState) {
-  const counts: Record<string, number> = { 'Hot': 0, 'Grill': 0, 'Healthy Bowls': 0 };
+  const counts: Record<string, number> = { 'Hot': 0, 'Grill': 0, 'Assembly': 0 };
   Object.values(state.orders).forEach(o => {
     if (o.status === 'active') {
       o.items.forEach(item => {
@@ -50,9 +50,9 @@ function updateCapacity(state: KDSState) {
   });
   const MAX = CFG.MAX_STATION_ITEMS;
   state.stationLoads = {
-    'Hot':           Math.min(100, (counts['Hot']           / MAX) * 100),
-    'Grill':         Math.min(100, (counts['Grill']         / MAX) * 100),
-    'Healthy Bowls': Math.min(100, (counts['Healthy Bowls'] / MAX) * 100),
+    'Hot':      Math.min(100, (counts['Hot']      / MAX) * 100),
+    'Grill':    Math.min(100, (counts['Grill']    / MAX) * 100),
+    'Assembly': Math.min(100, (counts['Assembly'] / MAX) * 100),
   };
   Object.keys(state.stationLoads).forEach(stn => {
     if (state.stationLoads[stn] > (state.shiftStats.peakLoad[stn] || 0)) {
@@ -618,7 +618,7 @@ export function KDSApp() {
       state.completedRush = 0;
       state.shiftStats = {
         onTimeCount: 0, totalCompleted: 0, velocities: [],
-        peakLoad: { 'Hot': 0, 'Grill': 0, 'Healthy Bowls': 0 },
+        peakLoad: { 'Hot': 0, 'Grill': 0, 'Assembly': 0 },
         coldLog: 0, rejectedCount: 0,
       };
       update();

@@ -36,7 +36,7 @@ export const BRANDS: Record<string, {
     ],
   },
   'Bowl & Salad Co.': {
-    station: 'Healthy Bowls',
+    station: 'Assembly',
     color: '#1a4a6b',
     items: [
       { name: 'Brioche Burger Buns',        prepSecs: 8 },
@@ -65,7 +65,7 @@ export const REJECTION_REASONS = [
   'Other / Operational Issue',
 ] as const;
 
-export const STATIONS = ['Hot', 'Grill', 'Healthy Bowls'] as const;
+export const STATIONS = ['Hot', 'Grill', 'Assembly'] as const;
 
 export const CUSTOMERS = [
   'Rahul S.', 'Ananya G.', 'Vikram K.', 'Neha M.', 'Rohan P.',
@@ -73,7 +73,8 @@ export const CUSTOMERS = [
 ];
 
 export const NOTES_POOL = [
-  'No onions', 'Extra spicy', 'Keep it hot', 'Add extra dip', 'Make it mild', 'No dressings',
+  'Extra Spicy please!', 'No onions', 'Sauce on the side', 'Less oil',
+  'Make it crispy', 'Double cheese', 'Gluten-free preference',
 ];
 
 export const RIDER_NAMES = [
@@ -175,12 +176,12 @@ export function createInitialState(): KDSState {
     undoTimer:         null,
     throttleActive:    false,
     throttleStart:     null,
-    stationLoads:      { 'Hot': 0, 'Grill': 0, 'Healthy Bowls': 0 },
+    stationLoads:      { 'Hot': 0, 'Grill': 0, 'Assembly': 0 },
     slaAlerted:        new Set(),
     completedRush:     0,
     shiftStats: {
       onTimeCount: 0, totalCompleted: 0, velocities: [],
-      peakLoad: { 'Hot': 0, 'Grill': 0, 'Healthy Bowls': 0 },
+      peakLoad: { 'Hot': 0, 'Grill': 0, 'Assembly': 0 },
       coldLog: 0, rejectedCount: 0,
     },
     showAnalyticsModal:  false,

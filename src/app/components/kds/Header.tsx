@@ -11,7 +11,7 @@ interface HeaderProps {
   onOpenNewOrder: () => void; onOpenPause: () => void; onOpenMenu: () => void;
 }
 
-const STATIONS = ['Hot', 'Grill', 'Healthy Bowls'] as const;
+const STATIONS = ['Hot', 'Grill', 'Assembly'] as const;
 
 function WillowLogo({ size = 26, color = 'var(--kds-oxblood)' }: { size?: number; color?: string }) {
   return (
@@ -79,7 +79,7 @@ export function KDSHeader(props: HeaderProps) {
           return (
             <div key={stn} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
               <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--kds-graphite)' }}>
-                {stn === 'Healthy Bowls' ? 'Bowls' : stn}
+                {stn}
               </span>
               {/* Segment bar */}
               <div className={isFull ? 'kds-sl-track overloaded' : 'kds-sl-track'} style={{ display: 'flex', gap: 2, width: 68, height: 8 }}>
