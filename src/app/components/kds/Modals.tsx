@@ -3,12 +3,16 @@ import type { KDSOrder, AnalyticsData, KDSItem } from './types';
 import { BRANDS, REJECTION_REASONS, makeItem } from './config';
 import { OxBtn, GhostBtn } from './KDSApp';
 
+interface PoolItem { name: string; ageMins: number; matchId: string; }
+
 interface ModalsProps {
   showNewOrder: boolean;
   showPause: boolean;
   showMenu: boolean;
   showReject: boolean;
   showAnalytics: boolean;
+  showPoolConfirm: boolean;
+  poolConfirmItems: PoolItem[];
   rejectReason: string | null;
   analyticsSnapshot: AnalyticsData | null;
   oosItems: Record<string, boolean>;
@@ -19,12 +23,17 @@ interface ModalsProps {
   onCloseMenu: () => void;
   onCloseReject: () => void;
   onCloseAnalytics: () => void;
+  onClosePoolConfirm: () => void;
   onSelectRejectReason: (r: string) => void;
   onFinalizeReject: () => void;
   onApplyPause: (channels: {Swiggy: boolean; Zomato: boolean; DirectApp: boolean}, brand: string, mins: number) => void;
   onSaveOos: (items: Record<string, boolean>) => void;
   onSubmitManualOrder: (params: { customer: string; platform: string; brand: string; items: KDSItem[]; notes: string }) => boolean;
+  onPoolAcceptUseItems: () => void;
+  onPoolAcceptCookFresh: () => void;
 }
+
+export type { PoolItem, ModalsProps as KDSModalsProps };
 
 export function KDSModals(props: ModalsProps) {
   return (
@@ -34,6 +43,14 @@ export function KDSModals(props: ModalsProps) {
       {props.showMenu     && <MenuModal {...props} />}
       {props.showReject   && <RejectModal {...props} />}
       {props.showAnalytics && props.analyticsSnapshot && <AnalyticsModal {...props} data={props.analyticsSnapshot} />}
+      {props.showPoolConfirm && props.poolConfirmItems.length > 0 && (
+        <PoolItemsModal
+          items={props.poolConfirmItems}
+          onUseItems={props.onPoolAcceptUseItems}
+          onCookFresh={props.onPoolAcceptCookFresh}
+          onClose={props.onClosePoolConfirm}
+        />
+      )}
     </>
   );
 }
@@ -491,3 +508,40 @@ function KDSSelect({ value, onChange, children }: { value: string; onChange: (v:
     </select>
   );
 }
+
+// ── Pool Items Confirmation Modal ──────────────────────────────
+function PoolItemsModal({ items, onUseItems, onCookFresh, onClose }: {
+  items: PoolItem[];
+  onUseItems: () => void;
+  onCookFresh: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ModalShell onClose={onClose} width={440}>
+      <ModalHead title="Ready Items Available in Pool" onClose={onClose} />
+      <ModalBody>
+        <div style={{ padding: '10px 12px', background: 'rgba(217,119,6,0.08)', border: '1px solid #d97706', borderRadius: 'var(--kds-r)', marginBottom: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#92400e', marginBottom: 8 }}>
+            ↺ Items prepped from a cancelled order
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {items.map(item => (
+              <div key={item.matchId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: '#fff7ed', borderRadius: 4, border: '1px solid rgba(217,119,6,0.2)' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--kds-ink)' }}>{item.name}</span>
+                <span style={{ fontSize: 10, color: '#92400e', fontWeight: 600 }}>Made {item.ageMins}m ago</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--kds-graphite)', margin: 0, lineHeight: 1.5 }}>
+          These items are sitting in the Ready Items Pool. Use them for this order instead of cooking fresh? They'll be marked as ready immediately.
+        </p>
+      </ModalBody>
+      <ModalFoot>
+        <GhostBtn onClick={onCookFresh} style={{ flex: 1, justifyContent: 'center' }}>Cook Fresh Instead</GhostBtn>
+        <OxBtn onClick={onUseItems} style={{ flex: 1, justifyContent: 'center', background: '#d97706', borderColor: '#d97706' }}>↺ Use Pool Items</OxBtn>
+      </ModalFoot>
+    </ModalShell>
+  );
+}
+

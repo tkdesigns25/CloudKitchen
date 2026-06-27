@@ -56,6 +56,7 @@ export interface CanceledStock {
   name: string;
   qty: number;
   createdAtSimSecs: number;
+  canceledBy?: 'Customer' | 'Kitchen';
 }
 
 export interface ShiftStats {

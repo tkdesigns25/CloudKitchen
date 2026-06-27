@@ -12,11 +12,12 @@ import { KDSHeader } from './Header';
 import { NewOrderCard } from './NewOrderCard';
 import { ActiveOrderCard } from './ActiveOrderCard';
 import { Column3 } from './Column3';
+import { Column4 } from './Column4';
 import { KDSModals } from './Modals';
 import { UndoToast } from './UndoToast';
 
 // ── Helpers ────────────────────────────────────────────────────
-function getBulkCandidates(station: string, orders: Record<string, KDSOrder>) {
+function getGroupPrepCandidates(station: string, orders: Record<string, KDSOrder>) {
   const map: Record<string, Array<{orderId: string; item: KDSItem; sla: number}>> = {};
   Object.values(orders).forEach(o => {
     if (o.status !== 'active') return;
@@ -41,7 +42,9 @@ function updateCapacity(state: KDSState) {
   Object.values(state.orders).forEach(o => {
     if (o.status === 'active') {
       o.items.forEach(item => {
-        if (item.state === 'Cooking') counts[item.station] = (counts[item.station] || 0) + 1;
+        if (item.state === 'Cooking' || item.state === 'Queued') {
+          counts[item.station] = (counts[item.station] || 0) + item.qty;
+        }
       });
     }
   });
@@ -75,10 +78,13 @@ export function KDSApp() {
   const update = useCallback(() => setVersion(v => v + 1), []);
 
   // Modal visibility via clean useState (not mixed into the mutable ref)
-  const [showNewOrder,  setShowNewOrder]  = useState(false);
-  const [showPause,     setShowPause]     = useState(false);
-  const [showMenu,      setShowMenu]      = useState(false);
-  const [undoLabel,     setUndoLabel]     = useState('');
+  const [showNewOrder,    setShowNewOrder]    = useState(false);
+  const [showPause,       setShowPause]       = useState(false);
+  const [showMenu,        setShowMenu]        = useState(false);
+  const [undoLabel,       setUndoLabel]       = useState('');
+  const [showPoolConfirm, setShowPoolConfirm] = useState(false);
+  const [poolConfirmItems, setPoolConfirmItems] = useState<Array<{name: string; ageMins: number; matchId: string}>>([]);
+  const pendingAcceptOrderId = React.useRef<string | null>(null);
 
   const s = stateRef.current; // convenient alias for reading state in render
 
@@ -168,7 +174,56 @@ export function KDSApp() {
     const state = stateRef.current;
     const order = state.orders[orderId];
     if (!order || order.status !== 'new') return;
-    acceptOrderCore(orderId, state);
+
+    // Check for Ready Items Pool matches
+    const poolMatches = order.items.flatMap(item => {
+      const match = state.canceledStock.find(c => c.name === item.name && c.qty >= item.qty);
+      if (!match) return [];
+      const ageMins = Math.floor((state.currentSimSecs - match.createdAtSimSecs) / 60);
+      return [{ name: item.name, ageMins, matchId: match.id }];
+    });
+
+    if (poolMatches.length > 0) {
+      // Pause and ask: Use Pool Items or Cook Fresh?
+      pendingAcceptOrderId.current = orderId;
+      setPoolConfirmItems(poolMatches);
+      setShowPoolConfirm(true);
+    } else {
+      acceptOrderCore(orderId, state);
+      update();
+    }
+  }
+
+  function handlePoolAcceptUseItems() {
+    const orderId = pendingAcceptOrderId.current;
+    if (!orderId) return;
+    pendingAcceptOrderId.current = null;
+    setShowPoolConfirm(false);
+    setPoolConfirmItems([]);
+    // acceptOrderCore already auto-consumes canceledStock matches
+    acceptOrderCore(orderId, stateRef.current);
+    update();
+  }
+
+  function handlePoolAcceptCookFresh() {
+    const orderId = pendingAcceptOrderId.current;
+    if (!orderId) return;
+    pendingAcceptOrderId.current = null;
+    setShowPoolConfirm(false);
+    setPoolConfirmItems([]);
+    const state = stateRef.current;
+    const order = state.orders[orderId];
+    if (!order) return;
+    // Cook fresh: move items to Queued state, skip pool consumption
+    order.status             = 'active';
+    order.acceptedAt         = Date.now();
+    order.elapsedPrepSimSecs = 0;
+    order.items.forEach(item => {
+      item.state                 = 'Queued';
+      item.cookingElapsedSimSecs = 0;
+      item.queuePriority         = Date.now() + Math.random();
+    });
+    assignRider(orderId);
     update();
   }
 
@@ -259,6 +314,13 @@ export function KDSApp() {
     order.status   = 'packed';
     order.packedAt = Date.now();
     order.sittingSecs = 0;
+
+    // If delivery guy is already here, automatically deliver when packed!
+    const rider = state.riders.find(r => r.orderId === orderId);
+    if (rider && rider.status === 'arrived') {
+      confirmHandover(orderId);
+      return;
+    }
     update();
   }
 
@@ -306,18 +368,14 @@ export function KDSApp() {
     const snapshot = deepClone(order);
 
     order.items.forEach(item => {
-      if (item.state !== 'Ready') {
-        state.canceledStock.push({ id: makeId(), name: item.name, qty: item.qty, createdAtSimSecs: state.currentSimSecs || 0 });
-      }
+      state.canceledStock.push({ id: makeId(), name: item.name, qty: item.qty, createdAtSimSecs: state.currentSimSecs || 0, canceledBy: 'Kitchen' });
     });
 
     pushUndo(`Order ${ordNum(orderId)} cancelled`, () => {
       stateRef.current.orders[orderId] = snapshot;
       order.items.forEach(item => {
-        if (item.state !== 'Ready') {
-          const idx = stateRef.current.canceledStock.findIndex(c => c.name === item.name);
-          if (idx !== -1) stateRef.current.canceledStock.splice(idx, 1);
-        }
+        const idx = stateRef.current.canceledStock.findIndex(c => c.name === item.name);
+        if (idx !== -1) stateRef.current.canceledStock.splice(idx, 1);
       });
       stateRef.current.shiftStats.rejectedCount = Math.max(0, stateRef.current.shiftStats.rejectedCount - 1);
     });
@@ -326,6 +384,30 @@ export function KDSApp() {
     if (rider) rider.orderId = null;
     state.shiftStats.rejectedCount++;
     delete state.orders[orderId];
+    update();
+  }
+
+  function cancelOrderByCustomer(orderId: string) {
+    const state = stateRef.current;
+    const order = state.orders[orderId];
+    if (!order) return;
+
+    order.items.forEach(item => {
+      state.canceledStock.push({
+        id: makeId(),
+        name: item.name,
+        qty: item.qty,
+        createdAtSimSecs: state.currentSimSecs || 0,
+        canceledBy: 'Customer',
+      });
+    });
+
+    const rider = state.riders.find(r => r.orderId === orderId);
+    if (rider) rider.orderId = null;
+
+    delete state.orders[orderId];
+    setUndoLabel(`⚠️ Order #${ordNum(orderId)} Cancelled by Customer — Items moved to Pool`);
+    playSound('slaWarn', state.soundEnabled);
     update();
   }
 
@@ -370,7 +452,7 @@ export function KDSApp() {
     Object.values(state.orders).forEach(o => {
       if (o.status === 'active') {
         o.items.forEach(it => {
-          if (it.state === 'Queued' && it.station === station) all.push({ orderId: o.id, item: it });
+          if (it.state !== 'Ready' && it.station === station) all.push({ orderId: o.id, item: it });
         });
       }
     });
@@ -395,7 +477,7 @@ export function KDSApp() {
     Object.values(state.orders).forEach(o => {
       if (o.status === 'active') {
         o.items.forEach(item => {
-          if (item.state === 'Queued' && item.station === station) all.push({ orderId: o.id, item });
+          if (item.state !== 'Ready' && item.station === station) all.push({ orderId: o.id, item });
         });
       }
     });
@@ -563,14 +645,15 @@ export function KDSApp() {
         }
       }
 
-      // Subsequent orders: ~5% chance per second (~1 every 20 s on average)
-      if (state.isOpen && state.firstOrderSent && Math.random() < 0.05) {
+      // Subsequent orders: ~20% chance per second (~1 every 5 s on average for balanced 40% slower flow)
+      const allChannelsPaused = Object.values(state.pausedChannels).every(v => v);
+      if (state.isOpen && state.firstOrderSent && !allChannelsPaused && !state.throttleActive && Math.random() < 0.20) {
         generateSimulatedOrder();
       }
 
-      // Simulated time advances 5s per real second
+      // Simulated time advances 3s per real second (40% slower)
       if (state.isOpen) {
-        state.currentSimSecs = (state.currentSimSecs || 0) + 5;
+        state.currentSimSecs = (state.currentSimSecs || 0) + 3;
 
         // Decay canceled stock after 30 sim minutes
         state.canceledStock = state.canceledStock.filter(
@@ -588,7 +671,7 @@ export function KDSApp() {
       // Process each order
       Object.values(state.orders).forEach(order => {
         if (order.status === 'new') {
-          order.autoCancelSecs = Math.max(0, order.autoCancelSecs - 5);
+          order.autoCancelSecs = Math.max(0, order.autoCancelSecs - 3);
           if (order.autoCancelSecs === 0) {
             order.status = 'rejected';
             state.rejected.push(deepClone(order));
@@ -598,8 +681,8 @@ export function KDSApp() {
         }
 
         if ((order.status === 'active' || order.status === 'packed') && order.acceptedAt) {
-          order.slaSecsRemaining   = Math.max(-999, order.slaSecsRemaining - 5);
-          order.elapsedPrepSimSecs = (order.elapsedPrepSimSecs || 0) + 5;
+          order.slaSecsRemaining   = Math.max(-999, order.slaSecsRemaining - 3);
+          order.elapsedPrepSimSecs = (order.elapsedPrepSimSecs || 0) + 3;
 
           if (order.slaSecsRemaining <= CFG.SLA_WARN_SECS && !state.slaAlerted.has(order.id)) {
             state.slaAlerted.add(order.id);
@@ -610,44 +693,83 @@ export function KDSApp() {
         if (order.status === 'active') {
           order.items.forEach(item => {
             if (item.state === 'Cooking') {
-              item.cookingElapsedSimSecs = (item.cookingElapsedSimSecs || 0) + 5;
+              item.cookingElapsedSimSecs = (item.cookingElapsedSimSecs || 0) + 3;
+              // Auto-complete item when cooking time is done
+              if (item.cookingElapsedSimSecs >= item.prepSecs) {
+                item.state = 'Ready';
+              }
             }
           });
+
+          // Check if ALL items in the order are ready
+          const allReady = order.items.every(i => i.state === 'Ready');
+          if (allReady) {
+            if (order.riderStatus === 'arrived') {
+              // Rider is already here! Deliver automatically with celebration animation!
+              const rider = state.riders.find(r => r.orderId === order.id);
+              order.status = 'packed';
+              order.packedAt = Date.now();
+              const onTime = order.slaSecsRemaining >= 0;
+              order.completedAt = Date.now();
+              const vel = (order.completedAt - (order.acceptedAt ?? order.completedAt)) / 60000;
+              state.shiftStats.velocities.push(vel);
+              if (onTime) state.shiftStats.onTimeCount++;
+              state.shiftStats.totalCompleted++;
+              state.completedRush++;
+              if (rider) { rider.orderId = null; rider.status = 'transit'; rider.eta = 0; }
+              state.slaAlerted.delete(order.id);
+              state.completed.push(deepClone(order));
+              delete state.orders[order.id];
+              setUndoLabel(`🎉 Order #${ordNum(order.id)} Picked Up & Delivered!`);
+              playSound('handover', state.soundEnabled);
+            } else {
+              // Rider not here yet — automatically transition to Packed & Waiting in Col 4!
+              order.status = 'packed';
+              order.packedAt = Date.now();
+              order.sittingSecs = 0;
+            }
+          }
         }
 
         if (order.status === 'packed') {
-          order.sittingSecs = (order.sittingSecs || 0) + 5;
+          order.sittingSecs = (order.sittingSecs || 0) + 3;
           if (order.sittingSecs! >= CFG.COLD_ORDER_SECS && !order._coldLogged) {
             order._coldLogged = true;
             state.shiftStats.coldLog++;
           }
           if (order.riderStatus === 'arrived') {
-            order.riderCoWaitSecs = (order.riderCoWaitSecs || 0) + 5;
-            if (order.riderCoWaitSecs! >= 10) {
-              // Auto-handover when rider has waited 10+ sim seconds
-              const rider = state.riders.find(r => r.orderId === order.id);
-              if (rider && rider.status === 'arrived') {
-                const onTime = order.slaSecsRemaining >= 0;
-                order.completedAt = Date.now();
-                const vel = (order.completedAt - (order.acceptedAt ?? order.completedAt)) / 60000;
-                state.shiftStats.velocities.push(vel);
-                if (onTime) state.shiftStats.onTimeCount++;
-                state.shiftStats.totalCompleted++;
-                state.completedRush++;
-                rider.orderId = null; rider.status = 'transit'; rider.eta = 0;
-                state.slaAlerted.delete(order.id);
-                state.completed.push(deepClone(order));
-                delete state.orders[order.id];
-              }
-            }
+            // Auto-handover immediately when rider arrives for packed order!
+            const rider = state.riders.find(r => r.orderId === order.id);
+            const onTime = order.slaSecsRemaining >= 0;
+            order.completedAt = Date.now();
+            const vel = (order.completedAt - (order.acceptedAt ?? order.completedAt)) / 60000;
+            state.shiftStats.velocities.push(vel);
+            if (onTime) state.shiftStats.onTimeCount++;
+            state.shiftStats.totalCompleted++;
+            state.completedRush++;
+            if (rider) { rider.orderId = null; rider.status = 'transit'; rider.eta = 0; }
+            state.slaAlerted.delete(order.id);
+            state.completed.push(deepClone(order));
+            delete state.orders[order.id];
+            setUndoLabel(`🎉 Order #${ordNum(order.id)} Picked Up & Delivered!`);
+            playSound('handover', state.soundEnabled);
           }
         }
       });
 
+      // Simulated Customer Cancellations mid-cook or in Packed & Waiting (~5% chance per tick)
+      if (state.isOpen && Math.random() < 0.05) {
+        const eligibleOrders = Object.values(state.orders).filter(o => o.status === 'active' || o.status === 'packed');
+        if (eligibleOrders.length > 0) {
+          const target = eligibleOrders[Math.floor(Math.random() * eligibleOrders.length)];
+          cancelOrderByCustomer(target.id);
+        }
+      }
+
       // Rider ETAs
       state.riders.forEach(rider => {
         if (rider.status === 'transit' && rider.eta > 0) {
-          rider.eta = Math.max(0, rider.eta - 5);
+          rider.eta = Math.max(0, rider.eta - 3);
           if (rider.eta === 0) {
             rider.status   = 'arrived';
             rider.waitSecs = 0;
@@ -656,7 +778,7 @@ export function KDSApp() {
             if (order) order.riderStatus = 'arrived';
           }
         }
-        if (rider.status === 'arrived') rider.waitSecs = (rider.waitSecs || 0) + 5;
+        if (rider.status === 'arrived') rider.waitSecs = (rider.waitSecs || 0) + 3;
       });
 
       updateCapacity(state);
@@ -670,7 +792,7 @@ export function KDSApp() {
   function generateSimulatedOrder() {
     const state = stateRef.current;
     const allItems = Object.values(BRANDS).flatMap(d => d.items.map(i => ({ name: i.name })));
-    const n = Math.floor(Math.random() * 3) + 1;
+    const n = Math.floor(Math.random() * 3) + 2;
     const items: KDSItem[] = [];
     for (let i = 0; i < n; i++) {
       const sel = allItems[Math.floor(Math.random() * allItems.length)];
@@ -681,10 +803,11 @@ export function KDSApp() {
     }
     const brandsSet = [...new Set(items.map(i => ITEM_BRAND[i.name]))];
     const brand     = brandsSet.join(' + ');
-    const sources: Array<'Swiggy' | 'Zomato'> = ['Swiggy', 'Zomato'];
-    const source    = sources[Math.floor(Math.random() * 3)];
+    const sources: Array<'Swiggy' | 'Zomato' | 'DirectApp'> = ['Swiggy', 'Zomato', 'DirectApp'];
+    const source    = sources[Math.floor(Math.random() * sources.length)];
 
-    // Check if channel is paused
+    // Check if channel is paused or store is throttled
+    if (state.throttleActive) return;
     if (state.pausedChannels[source]) {
       if (state.pausedBrand === 'All Brands' || brandsSet.includes(state.pausedBrand)) return;
     }
@@ -727,7 +850,8 @@ export function KDSApp() {
   // ── Computed Values ───────────────────────────────────────────
   const orders       = Object.values(s.orders);
   const newOrders    = orders.filter(o => o.status === 'new').sort((a, b) => a.autoCancelSecs - b.autoCancelSecs);
-  const activeOrders = orders.filter(o => ['active', 'packed'].includes(o.status)).sort((a, b) => a.slaSecsRemaining - b.slaSecsRemaining);
+  const activeOrders = orders.filter(o => o.status === 'active').sort((a, b) => a.slaSecsRemaining - b.slaSecsRemaining);
+  const packedOrders = orders.filter(o => o.status === 'packed').sort((a, b) => a.slaSecsRemaining - b.slaSecsRemaining);
 
   const showPauseBanner   = !!(s.pausedUntil && s.currentSimSecs < s.pausedUntil);
   const pausedRemaining   = Math.max(0, (s.pausedUntil ?? 0) - s.currentSimSecs);
@@ -840,22 +964,31 @@ export function KDSApp() {
           </div>
         </section>
 
-        {/* Col 3: Helpers */}
+        {/* Col 3: Station Queues */}
         <Column3
           orders={s.orders}
-          riders={s.riders}
           stationLoads={s.stationLoads}
           onStartItem={startItem}
           onHoldItem={holdItem}
-          onPrepBulk={prepareInBulk}
+          onGroupPrep={prepareInBulk}
           onMoveUp={(oId, iId) => moveQueueItem(oId, iId, 'up')}
           onMoveDown={(oId, iId) => moveQueueItem(oId, iId, 'down')}
           onReorder={reorderQueue}
+          getGroupPrepCandidates={(stn) => getGroupPrepCandidates(stn, s.orders)}
+        />
+
+        {/* Col 4: Packed & Ready + Riders Waiting + Ready Items Pool */}
+        <Column4
+          canceledStock={s.canceledStock}
+          currentSimSecs={s.currentSimSecs}
+          orders={s.orders}
+          packedOrders={packedOrders}
+          riders={s.riders}
           onRiderHandover={(riderId) => {
             const rider = s.riders.find(r => r.id === riderId);
             if (rider?.orderId) confirmHandover(rider.orderId);
           }}
-          getBulkCandidates={(stn) => getBulkCandidates(stn, s.orders)}
+          onCallRider={callRider}
         />
       </MainGrid>
 
@@ -866,6 +999,8 @@ export function KDSApp() {
         showMenu={showMenu}
         showReject={!!s.rejectingOrderId}
         showAnalytics={s.showAnalyticsModal}
+        showPoolConfirm={showPoolConfirm}
+        poolConfirmItems={poolConfirmItems}
         rejectReason={s.rejectReason}
         analyticsSnapshot={s.analyticsSnapshot}
         oosItems={s.oosItems}
@@ -876,11 +1011,14 @@ export function KDSApp() {
         onCloseMenu={() => setShowMenu(false)}
         onCloseReject={closeRejectOverlay}
         onCloseAnalytics={closeAnalytics}
+        onClosePoolConfirm={() => { setShowPoolConfirm(false); pendingAcceptOrderId.current = null; }}
         onSelectRejectReason={selectRejectReason}
         onFinalizeReject={finalizeReject}
         onApplyPause={applyPause}
         onSaveOos={saveOosItems}
         onSubmitManualOrder={submitManualOrder}
+        onPoolAcceptUseItems={handlePoolAcceptUseItems}
+        onPoolAcceptCookFresh={handlePoolAcceptCookFresh}
       />
 
       {/* ── Undo Toast ──────────────────────────────────────── */}
@@ -950,7 +1088,7 @@ function MainGrid({ children, isOpen, throttleActive, showPause }: {
       top: `calc(var(--kds-hh) + ${bannerCount * 38}px)`,
       left: 0, right: 0, bottom: 0,
       display: 'grid',
-      gridTemplateColumns: '25% 50% 25%',
+      gridTemplateColumns: '18% 32% 30% 20%',
       transition: 'top 0.2s',
       borderTop: '6px solid var(--kds-vellum)',
     }}>
@@ -1016,10 +1154,11 @@ export function ChannelBadge({ source }: { source: string }) {
     Swiggy:    { bg: '#FC8019', label: 'Swiggy' },
     Zomato:    { bg: '#CB202D', label: 'Zomato' },
     Phone:     { bg: '#2c5282', label: 'Phone' },
+    DirectApp: { bg: '#6d28d9', label: 'Own App' },
   };
-  const cfg = map[source] ?? { bg: '#0052CC', label: source };
+  const cfg = map[source] ?? { bg: '#374151', label: source };
   return (
-    <span style={{ padding: '2px 6px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: 3, color: '#fff', background: cfg.bg }}>
+    <span style={{ padding: '2px 6px', fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: 3, color: '#fff', background: cfg.bg, whiteSpace: 'nowrap' }}>
       {cfg.label}
     </span>
   );

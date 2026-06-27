@@ -42,7 +42,7 @@ export function ActiveOrderCard(props: Props) {
   // Urgency class (animation only — no style conflict)
   const urgencyClass = isBreach ? 'kds-sla-breach' : isWarn ? 'kds-sla-urgent' : '';
 
-  const isPacked   = order.status === 'packed';
+  const isPacked    = order.status === 'packed';
   const readyToPack = !isPacked && allReady;
 
   // All border/background values computed as longhands — never mix with shorthands
@@ -52,13 +52,13 @@ export function ActiveOrderCard(props: Props) {
   const cardBorderLColor   = isBreach ? 'var(--kds-red)' : isWarn ? 'var(--kds-gold)' : cardBorderColor;
 
   // Timer display on dark oxblood background — must always be high-contrast
-  let slaTimerBg = 'transparent';
-  let slaTimerColor = 'var(--kds-vellum)'; // default: cream on dark red = readable
+  let slaTimerBg     = 'transparent';
+  let slaTimerColor  = 'var(--kds-vellum)';
   let slaTimerBorder = '1px solid transparent';
   if (isBreach) { slaTimerBg = 'var(--kds-red)'; slaTimerColor = '#fff'; slaTimerBorder = 'none'; }
   else if (isWarn) { slaTimerBg = 'var(--kds-gold)'; slaTimerColor = '#000'; slaTimerBorder = 'none'; }
 
-  // Canceled stock matches for active items
+  // Ready Items Pool matches for active items
   const canceledMatches = order.status === 'active'
     ? order.items.flatMap(item => {
         if (item.state === 'Ready') return [];
@@ -90,7 +90,7 @@ export function ActiveOrderCard(props: Props) {
     <article
       className={`kds-interactive kds-glide-in ${urgencyClass}`}
       style={{
-        width: '100%', maxWidth: 420,
+        width: '100%', maxWidth: 380,
         // Background — longhand only, no 'background' shorthand
         backgroundColor: cardBgColor,
         // Border — all four sides as longhands to avoid shorthand/longhand conflict
@@ -106,12 +106,12 @@ export function ActiveOrderCard(props: Props) {
       {/* Header */}
       <header style={{ display: 'flex', alignItems: 'stretch', borderBottom: 'var(--kds-b)', flexShrink: 0 }}>
         {/* Left: order num + platform + elapsed */}
-        <div style={{ padding: 12, borderRight: 'var(--kds-b)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 110 }}>
+        <div style={{ padding: '9px 10px', borderRight: 'var(--kds-b)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 96 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6, marginBottom: 2 }}>Order</div>
-            <div className="kds-ordnum" style={{ fontSize: 36, color: 'var(--kds-oxblood)' }}>{ordNum(order.id)}</div>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6, marginBottom: 2 }}>Order</div>
+            <div className="kds-ordnum" style={{ fontSize: 28, color: 'var(--kds-oxblood)', lineHeight: 1 }}>{ordNum(order.id)}</div>
           </div>
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 6 }}>
             <div style={{ marginBottom: 3 }}><ChannelBadge source={order.source} /></div>
             <div style={{ fontSize: 9, opacity: 0.7 }}>🕐 {elapsed}</div>
           </div>
@@ -119,17 +119,32 @@ export function ActiveOrderCard(props: Props) {
 
         {/* Right: Time Left timer + cancel */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ background: 'var(--kds-oxblood)', color: 'var(--kds-vellum)', padding: 12, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
-            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,249,235,0.7)', marginBottom: 3 }}>Time Left</span>
+          <div style={{ background: 'var(--kds-oxblood)', color: 'var(--kds-vellum)', padding: '9px 12px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(255,249,235,0.7)', marginBottom: 2 }}>Time Left</span>
             <span
               className="kds-countdown"
-              style={{ fontSize: 28, padding: '2px 6px', borderRadius: 3, background: slaTimerBg, color: slaTimerColor, border: slaTimerBorder }}
+              style={{ fontSize: 22, padding: '2px 6px', borderRadius: 3, background: slaTimerBg, color: slaTimerColor, border: slaTimerBorder }}
             >
               {slaLabel}
             </span>
           </div>
-          {/* Cancel button — moved to header bottom, requires 2-tap to confirm */}
-          <div style={{ padding: '4px 8px', background: 'rgba(240,231,215,0.5)', borderTop: 'var(--kds-b)', display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Rider action + Cancel button */}
+          <div style={{ padding: '3px 8px', background: 'rgba(240,231,215,0.5)', borderTop: 'var(--kds-b)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+            {rider && rider.status === 'transit' ? (
+              <button
+                className="kds-interactive"
+                onClick={props.onCallRider}
+                style={{
+                  padding: '3px 7px', border: '1px solid #d97706',
+                  borderRadius: 'var(--kds-r)', background: '#fef3c7',
+                  color: '#92400e',
+                  fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 9,
+                  letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
+                }}
+              >
+                📢 Call Rider
+              </button>
+            ) : <div />}
             <button
               className="kds-interactive"
               onClick={handleCancelClick}
@@ -147,22 +162,23 @@ export function ActiveOrderCard(props: Props) {
         </div>
       </header>
 
-      {/* Fulfilled from canceled stock prompts */}
+      {/* Ready Items Pool prompts */}
       {canceledMatches.map(m => (
         <div
           key={m.matchId}
           className="kds-interactive"
           onClick={() => props.onConsumeCanceled(m.matchId, order.id, m.name)}
-          style={{ padding: '6px 12px', background: 'rgba(248,228,125,0.35)', borderBottom: 'var(--kds-b)', fontSize: 10, fontWeight: 700, color: 'var(--kds-oxblood)', cursor: 'pointer' }}
+          style={{ padding: '5px 12px', background: 'rgba(217,119,6,0.08)', borderBottom: 'var(--kds-b)', fontSize: 10, fontWeight: 700, color: '#92400e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          ↺ Fulfill {m.name} from Canceled Stock? (Made {m.ageMins}m ago)
+          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#d97706', color: '#fff', padding: '1px 5px', borderRadius: 3 }}>Pool</span>
+          Use {m.name} from Ready Items Pool? (Made {m.ageMins}m ago)
         </div>
       ))}
 
       {/* Customer + notes */}
-      <div style={{ padding: '6px 12px', borderBottom: 'var(--kds-b)', background: 'rgba(240,231,215,0.3)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600 }}>{order.customer}</span>
-        {order.notes && <span style={{ fontSize: 10, fontStyle: 'italic', opacity: 0.8 }}>"{order.notes}"</span>}
+      <div style={{ padding: '5px 12px', borderBottom: 'var(--kds-b)', background: 'rgba(240,231,215,0.3)', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 600 }}>{order.customer}</span>
+        {order.notes && <span style={{ fontSize: 9, fontStyle: 'italic', opacity: 0.8 }}>"{order.notes}"</span>}
       </div>
 
       {/* Items — hidden when packed */}
@@ -179,9 +195,7 @@ export function ActiveOrderCard(props: Props) {
                   item={item}
                   orderId={order.id}
                   stationLoad={stationLoads[station] || 0}
-                  onToggle={() => props.onToggleItem(order.id, item.id)}
-                  onStart={() => props.onStartItem(order.id, item.id)}
-                  onHold={() => props.onHoldItem(order.id, item.id)}
+                  hasPoolMatch={canceledMatches.some(m => m.itemId === item.id)}
                 />
               ))}
             </section>
@@ -192,24 +206,24 @@ export function ActiveOrderCard(props: Props) {
       {/* CTA footer */}
       {isPacked ? <PackedFooter order={order} rider={rider} onHandover={props.onHandover} onCallRider={props.onCallRider} />
         : allReady ? (
-          <footer style={{ flexShrink: 0, borderTop: 'var(--kds-b)', height: 48 }}>
+          <footer style={{ flexShrink: 0, borderTop: 'var(--kds-b)', height: 40 }}>
             <button
               className="kds-interactive"
               onClick={props.onPackOrder}
-              style={{ width: '100%', height: '100%', background: 'var(--kds-oxblood)', color: 'var(--kds-vellum)', border: 'none', fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
+              style={{ width: '100%', height: '100%', background: 'var(--kds-oxblood)', color: 'var(--kds-vellum)', border: 'none', fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
             >
               📦 Confirm Packed
             </button>
           </footer>
         ) : (
-          <footer style={{ flexShrink: 0, borderTop: 'var(--kds-b)', height: 48, display: 'flex' }}>
+          <footer style={{ flexShrink: 0, borderTop: 'var(--kds-b)', height: 40, display: 'flex' }}>
             <div style={{ flex: 3, display: 'flex', alignItems: 'center', padding: '0 12px' }}>
-              <div style={{ width: '100%', background: 'var(--kds-vellum)', height: 8, borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(55,8,8,0.15)' }}>
+              <div style={{ width: '100%', background: 'var(--kds-vellum)', height: 6, borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(55,8,8,0.15)' }}>
                 <div style={{ background: 'var(--kds-oxblood)', height: '100%', width: `${(doneCount / total) * 100}%`, transition: 'width 0.3s' }} />
               </div>
             </div>
             <div style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--kds-oxblood)' }}>{doneCount} / {total} READY</span>
+              <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--kds-oxblood)' }}>{doneCount} / {total} READY</span>
             </div>
           </footer>
         )
@@ -218,70 +232,62 @@ export function ActiveOrderCard(props: Props) {
   );
 }
 
-function ItemRow({ item, orderId, stationLoad, onToggle, onStart, onHold }: {
-  item: KDSItem; orderId: string; stationLoad: number;
-  onToggle: () => void; onStart: () => void; onHold: () => void;
+function ItemRow({ item, orderId, stationLoad, hasPoolMatch }: {
+  item: KDSItem; orderId: string; stationLoad: number; hasPoolMatch: boolean;
 }) {
-  const isOver = stationLoad >= 90;
-
-  let rowBg = 'transparent';
+  let rowBg     = 'transparent';
   let rowBorder = '1px solid transparent';
   if (item.state === 'Queued') { rowBg = 'rgba(248,228,125,0.38)'; rowBorder = `1px solid var(--kds-gold)`; }
   if (item.state === 'Hold')   { rowBorder = '1px dashed rgba(55,8,8,0.3)'; }
 
   const isDone = item.state === 'Ready';
-  const cbBg   = isDone ? 'var(--kds-oxblood)' : 'var(--kds-vellum)';
 
   return (
     <div
-      className="kds-interactive"
-      onClick={onToggle}
       style={{
-        padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8,
-        cursor: 'pointer', borderBottom: '1px solid rgba(55,8,8,0.06)',
+        padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8,
+        borderBottom: '1px solid rgba(55,8,8,0.06)',
         opacity: item.state === 'Hold' ? 0.7 : 1,
         background: rowBg, border: rowBorder, borderRadius: 0,
       }}
     >
-      {/* Checkbox */}
-      <div style={{ flexShrink: 0, width: 16, height: 16, border: 'var(--kds-b)', borderRadius: 3, background: cbBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {isDone && <span style={{ color: 'var(--kds-vellum)', fontSize: 10, lineHeight: 1, marginTop: -1 }}>✓</span>}
-      </div>
-
       {/* Item text */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--kds-oxblood)' }}>{item.qty}×</div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--kds-ink)', wordBreak: 'break-word', textDecoration: isDone ? 'line-through' : 'none', opacity: isDone ? 0.5 : 1 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--kds-ink)', wordBreak: 'break-word', textDecoration: isDone ? 'line-through' : 'none', opacity: isDone ? 0.5 : 1 }}>
           {item.name}
         </div>
         {item.modifier && (
-          <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--kds-graphite)', paddingLeft: 8, marginTop: 1 }}>
+          <div style={{ fontSize: 9, fontStyle: 'italic', color: 'var(--kds-graphite)', paddingLeft: 8, marginTop: 1 }}>
             <span style={{ color: 'var(--kds-oxblood)' }}>♦ </span>{item.modifier}
           </div>
         )}
       </div>
 
-      {/* State controls */}
+      {/* Pool badge — shown when a matching pool item exists */}
+      {hasPoolMatch && !isDone && (
+        <span style={{
+          fontSize: 7, fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase',
+          padding: '2px 4px', borderRadius: 3,
+          background: '#d97706', color: '#fff', flexShrink: 0,
+        }}>↺ Pool</span>
+      )}
+
+      {/* Status displays */}
       {item.state === 'Queued' && (
-        <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
-          <SmBtn onClick={onStart}>Prep</SmBtn>
-          <SmBtn onClick={onHold} highlight={isOver}>Hold</SmBtn>
-        </div>
+        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--kds-graphite)', opacity: 0.7 }}>⏳ Queued</span>
       )}
       {item.state === 'Hold' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={e => e.stopPropagation()}>
-          <span style={{ fontSize: 8, fontWeight: 700, opacity: 0.5, textTransform: 'uppercase' }}>[On Hold]</span>
-          <SmBtn onClick={onStart}>Prep</SmBtn>
-        </div>
+        <span style={{ fontSize: 9, fontWeight: 700, color: '#3b82f6' }}>⏸ Hold</span>
       )}
       {item.state === 'Cooking' && (
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: 8, fontWeight: 700, opacity: 0.5, textTransform: 'uppercase', marginBottom: 2 }}>Cooking</div>
-          <div style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: 'var(--kds-ink)' }}>{fmtMSS(item.cookingElapsedSimSecs || 0)}</div>
+          <div style={{ fontSize: 8, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', marginBottom: 2 }}>🔥 Cooking</div>
+          <div style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 700, color: 'var(--kds-ink)' }}>{fmtMSS(item.cookingElapsedSimSecs || 0)}</div>
         </div>
       )}
       {item.state === 'Ready' && (
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--kds-green)', flexShrink: 0 }}>✓ Done</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--kds-green)', flexShrink: 0 }}>✓ Ready</span>
       )}
     </div>
   );
@@ -307,36 +313,40 @@ function SmBtn({ children, onClick, highlight }: { children: React.ReactNode; on
 function PackedFooter({ order, rider, onHandover, onCallRider }: {
   order: KDSOrder; rider: KDSRider | undefined; onHandover: () => void; onCallRider: () => void;
 }) {
-  const canGive  = rider?.status === 'arrived';
+  const isArrived = rider?.status === 'arrived';
   const riderMsg = rider
-    ? rider.status === 'arrived' ? `${rider.name} is HERE` : `${rider.name} on the way — ${fmtMSS(rider.eta)} left`
-    : 'Waiting for rider';
-
-  const showCallRider = rider && rider.status !== 'arrived';
+    ? isArrived ? `🟢 ${rider.name} HAS ARRIVED (Handover Complete)` : `🚴 ${rider.name} on the way — ${fmtMSS(rider.eta)} away`
+    : '⏳ Waiting for rider assignment';
 
   return (
     <footer style={{ flexShrink: 0, borderTop: 'var(--kds-b)', background: 'var(--kds-linen)', padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, textAlign: 'center', textTransform: 'uppercase', color: 'var(--kds-oxblood)' }}>
-        [Waiting for Handover]
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--kds-oxblood)' }}>
+          [Packed & Ready]
+        </span>
+        <span style={{ fontSize: 9, fontWeight: 700, fontStyle: 'italic', color: isArrived ? 'var(--kds-green)' : 'var(--kds-graphite)' }}>
+          {isArrived ? '✓ Picked Up' : '⏳ Awaiting Arrival'}
+        </span>
       </div>
-      <div style={{ fontSize: 11, textAlign: 'center', color: 'var(--kds-graphite)' }}>{riderMsg}</div>
-      {showCallRider && (
+
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--kds-ink)' }}>
+        {riderMsg}
+      </div>
+
+      {!isArrived && rider && (
         <button
           className="kds-interactive"
           onClick={onCallRider}
-          style={{ width: '100%', padding: '6px', background: 'var(--kds-gold)', border: '1px solid var(--kds-ink)', borderRadius: 'var(--kds-r)', fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+          style={{
+            width: '100%', marginTop: 2, padding: '6px',
+            background: '#fef3c7', border: '1px solid #d97706', borderRadius: 'var(--kds-r)',
+            color: '#92400e', fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 10,
+            letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer'
+          }}
         >
-          Call Rider
+          📢 Call Rider / Speed Up Arrival
         </button>
       )}
-      <button
-        className="kds-interactive"
-        onClick={onHandover}
-        disabled={!canGive}
-        style={{ width: '100%', padding: '8px', background: canGive ? 'var(--kds-oxblood)' : 'var(--kds-linen)', color: canGive ? 'var(--kds-vellum)' : 'var(--kds-graphite)', border: 'none', borderRadius: 'var(--kds-r)', fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: canGive ? 'pointer' : 'not-allowed', opacity: canGive ? 1 : 0.5 }}
-      >
-        {canGive ? '🤝 Give to Rider' : '⏳ Waiting for rider…'}
-      </button>
     </footer>
   );
 }

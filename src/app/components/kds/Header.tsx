@@ -13,6 +13,23 @@ interface HeaderProps {
 
 const STATIONS = ['Hot', 'Grill', 'Healthy Bowls'] as const;
 
+function WillowLogo({ size = 26, color = 'var(--kds-oxblood)' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 12 86 C 38 74 62 74 88 86 C 62 80 38 80 12 86 Z" fill={color} stroke="none" />
+      <path d="M 50 82 L 50 42" strokeWidth="7" />
+      {/* Left drooping arches */}
+      <path d="M 50 46 C 30 40 10 22 10 44 L 10 70 M 17 44 L 17 70 M 24 40 L 24 70 M 31 36 L 31 70" />
+      <path d="M 50 42 C 36 24 22 12 22 32 L 22 46 M 29 32 L 29 46 M 36 28 L 36 46" />
+      {/* Center top crown */}
+      <path d="M 50 44 C 40 28 40 8 50 8 C 60 8 60 28 50 44 Z" fill={color} stroke="none" />
+      {/* Right drooping arches */}
+      <path d="M 50 42 C 64 24 78 12 78 32 L 78 46 M 71 32 L 71 46 M 64 28 L 64 46" />
+      <path d="M 50 46 C 70 40 90 22 90 44 L 90 70 M 83 44 L 83 70 M 76 40 L 76 70 M 69 36 L 69 70" />
+    </svg>
+  );
+}
+
 export function KDSHeader(props: HeaderProps) {
   const { isOpen, autoAccept, soundEnabled, cookingCount, waitingCount, doneCount, stationLoads, clock } = props;
 
@@ -25,8 +42,11 @@ export function KDSHeader(props: HeaderProps) {
       padding: '0 12px', gap: 10,
     }}>
       {/* Brand */}
-      <div style={{ fontFamily: 'var(--kds-font-ui)', fontWeight: 900, fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--kds-oxblood)', paddingRight: 12, borderRight: 'var(--kds-b)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-        KDS
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 12, borderRight: 'var(--kds-b)', flexShrink: 0 }}>
+        <WillowLogo size={24} color="var(--kds-oxblood)" />
+        <span style={{ fontFamily: 'var(--kds-font-ui)', fontWeight: 900, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--kds-oxblood)', whiteSpace: 'nowrap' }}>
+          Willow Kitchen
+        </span>
       </div>
 
       {/* Open / Close */}

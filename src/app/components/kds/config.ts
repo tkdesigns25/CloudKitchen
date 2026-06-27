@@ -3,8 +3,8 @@ import type { KDSItem, KDSOrder } from './types';
 export const CFG = {
   AUTO_CANCEL_SECS:      150,
   SLA_MINUTES:           15,
-  MAX_STATION_ITEMS:     10,
-  THROTTLE_TRIGGER_SECS: 15,
+  MAX_STATION_ITEMS:     8,
+  THROTTLE_TRIGGER_SECS: 10,
   UNDO_WINDOW_MS:        6000,
   ANALYTICS_MIN_ORDERS:  3,
   SLA_WARN_SECS:         120,
@@ -16,32 +16,32 @@ export const BRANDS: Record<string, {
   color: string;
   items: Array<{ name: string; prepSecs: number }>;
 }> = {
-  'Hot': {
+  'Burger Craft': {
     station: 'Hot',
     color: '#8b1a1a',
     items: [
-      { name: 'Classic Cheese Burger',       prepSecs: 8 * 60 },
-      { name: 'Chicken Double Patty Burger', prepSecs: 9 * 60 },
-      { name: 'Veg Patty Burger',            prepSecs: 7 * 60 },
-      { name: 'Paneer Fresh Burger',         prepSecs: 8 * 60 },
+      { name: 'Classic Cheese Burger',       prepSecs: 14 },
+      { name: 'Chicken Double Patty Burger', prepSecs: 16 },
+      { name: 'Veg Patty Burger',            prepSecs: 12 },
+      { name: 'Paneer Fresh Burger',         prepSecs: 14 },
     ],
   },
-  'Grill': {
+  'Grill House': {
     station: 'Grill',
     color: '#2d5a2d',
     items: [
-      { name: 'Classic French Fries',    prepSecs: 4 * 60 },
-      { name: 'Peri Peri Crinkle Fries', prepSecs: 5 * 60 },
-      { name: 'Loaded Cheese Fries',     prepSecs: 6 * 60 },
+      { name: 'Classic French Fries',    prepSecs: 10 },
+      { name: 'Peri Peri Crinkle Fries', prepSecs: 12 },
+      { name: 'Loaded Cheese Fries',     prepSecs: 14 },
     ],
   },
-  'Healthy Bowls': {
+  'Bowl & Salad Co.': {
     station: 'Healthy Bowls',
     color: '#1a4a6b',
     items: [
-      { name: 'Brioche Burger Buns',        prepSecs: 2 * 60 },
-      { name: 'Extra Spicy Mayo Modifier',  prepSecs: 1 * 60 },
-      { name: 'Garlic Dip Portion',         prepSecs: 1 * 60 },
+      { name: 'Brioche Burger Buns',        prepSecs: 8 },
+      { name: 'Extra Spicy Mayo Modifier',  prepSecs: 6 },
+      { name: 'Garlic Dip Portion',         prepSecs: 6 },
     ],
   },
 };
@@ -98,7 +98,7 @@ export function makeItem(name: string, qty: number, modifier = ''): KDSItem {
     name,
     qty,
     station:               ITEM_STATION[name] || 'Hot',
-    prepSecs:              ITEM_PREP[name]    || 10 * 60,
+    prepSecs:              ITEM_PREP[name]    || 14,
     state:                 'Queued',
     cookingElapsedSimSecs: 0,
     queuePriority:         Date.now() + Math.random(),

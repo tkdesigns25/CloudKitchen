@@ -15,8 +15,8 @@ if (!existsSync('index.html')) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Kitchen Display System — real-time order management for cloud kitchens" />
-    <title>KDS — Kitchen Pass</title>
+    <meta name="description" content="Willow Kitchen — real-time Kitchen Display System" />
+    <title>Willow Kitchen — KDS</title>
   </head>
   <body>
     <div id="root"></div>
