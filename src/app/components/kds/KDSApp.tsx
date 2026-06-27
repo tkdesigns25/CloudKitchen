@@ -812,7 +812,10 @@ export function KDSApp() {
           </div>
           <div
             className="kds-scroll"
-            style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 10px 10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(248px, 1fr))', gridAutoRows: 'min-content', alignContent: 'start', alignItems: 'start', gap: 10 }}
+            style={activeOrders.length === 0
+              ? { flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+              : { flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 10px 10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(248px, 1fr))', gridAutoRows: 'min-content', alignContent: 'start', alignItems: 'start', gap: 10 }
+            }
           >
             {activeOrders.length === 0 && <EmptyState icon="◎" text="Kitchen is clear" />}
             {activeOrders.map(order => (
@@ -949,6 +952,7 @@ function MainGrid({ children, isOpen, throttleActive, showPause }: {
       display: 'grid',
       gridTemplateColumns: '25% 50% 25%',
       transition: 'top 0.2s',
+      borderTop: '6px solid var(--kds-vellum)',
     }}>
       {children}
     </main>
@@ -1023,7 +1027,7 @@ export function ChannelBadge({ source }: { source: string }) {
 
 export function EmptyState({ icon, text }: { icon: string; text: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 16px', gap: 8, color: 'var(--kds-graphite)', opacity: 0.45 }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 16px', gap: 8, color: 'var(--kds-graphite)', opacity: 0.45 }}>
       <div style={{ fontSize: 34, lineHeight: 1 }}>{icon}</div>
       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{text}</div>
     </div>

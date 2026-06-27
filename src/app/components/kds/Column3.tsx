@@ -84,16 +84,24 @@ function StationQueue({ station, orders, stationLoad, bulkCandidates, onStartIte
   const isOver = stationLoad >= 90;
   const dragRef = useRef<{itemId: string; station: string} | null>(null);
 
+  // Show all non-ready items so the manager can track what's queued, cooking, and on hold
   const queuedItems: Array<{order: KDSOrder; item: KDSItem}> = [];
   Object.values(orders).forEach(o => {
     if (o.status !== 'active') return;
     o.items.forEach(item => {
-      if (item.state === 'Queued' && item.station === station) {
+      if ((item.state === 'Queued' || item.state === 'Cooking' || item.state === 'Hold') && item.station === station) {
         queuedItems.push({ order: o, item });
       }
     });
   });
-  queuedItems.sort((a, b) => a.item.queuePriority - b.item.queuePriority);
+  // Sort: Queued first (by priority), then Cooking, then Hold
+  const stateOrder: Record<string, number> = { Queued: 0, Cooking: 1, Hold: 2 };
+  queuedItems.sort((a, b) => {
+    const sA = stateOrder[a.item.state] ?? 99;
+    const sB = stateOrder[b.item.state] ?? 99;
+    if (sA !== sB) return sA - sB;
+    return a.item.queuePriority - b.item.queuePriority;
+  });
 
   return (
     <div style={{ background: 'var(--kds-linen)', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -116,79 +124,132 @@ function StationQueue({ station, orders, stationLoad, bulkCandidates, onStartIte
       ))}
 
       {/* Queue items */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 40, maxHeight: 180, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 40, maxHeight: 280, overflowY: 'auto' }}>
         {queuedItems.length === 0 ? (
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--kds-graphite)', textAlign: 'center', padding: '8px 0', opacity: 0.5 }}>Queue is empty</div>
-        ) : queuedItems.map(({ order, item }, idx) => (
-          <div
-            key={item.id}
-            className="kds-queue-card kds-interactive"
-            draggable
-            data-item-id={item.id}
-            data-station={station}
-            onDragStart={e => {
-              e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, station }));
-              dragRef.current = { itemId: item.id, station };
-              (e.currentTarget as HTMLElement).classList.add('dragging');
-            }}
-            onDragEnd={e => {
-              (e.currentTarget as HTMLElement).classList.remove('dragging');
-              document.querySelectorAll('.kds-queue-card').forEach(el => el.classList.remove('drag-over'));
-            }}
-            onDragOver={e => {
-              e.preventDefault();
-              const fromData = dragRef.current;
-              if (fromData?.station === station) (e.currentTarget as HTMLElement).classList.add('drag-over');
-            }}
-            onDragLeave={e => { (e.currentTarget as HTMLElement).classList.remove('drag-over'); }}
-            onDrop={e => {
-              e.preventDefault();
-              (e.currentTarget as HTMLElement).classList.remove('drag-over');
-              try {
-                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                if (data.station === station) onReorder(data.itemId, item.id, station);
-              } catch (_) {}
-            }}
-            style={{ padding: '6px 8px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-vellum)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5, cursor: 'grab', userSelect: 'none' }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--kds-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {item.qty}× {item.name}
+        ) : queuedItems.map(({ order, item }, idx) => {
+          const isCooking = item.state === 'Cooking';
+          const isHold    = item.state === 'Hold';
+          const isQueued  = item.state === 'Queued';
+
+          // Left border accent colour — only for Cooking and Hold states
+          // (Queued items use the plain uniform border on all four sides)
+          const accentBorderLeft: string | undefined = isCooking
+            ? '3px solid #d97706'   // amber for cooking
+            : isHold
+            ? '3px solid #3b82f6'   // blue for hold
+            : undefined;
+
+          // Background tint per state
+          const bgTint = isCooking
+            ? 'rgba(217,119,6,0.06)'
+            : isHold
+            ? 'rgba(59,130,246,0.07)'
+            : 'var(--kds-vellum)';
+
+          // Status pill styling
+          const pillStyle: React.CSSProperties = isCooking
+            ? { background: '#d97706', color: '#fff' }
+            : isHold
+            ? { background: '#3b82f6', color: '#fff' }
+            : { background: 'var(--kds-linen)', color: 'var(--kds-graphite)', border: 'var(--kds-b)' };
+
+          const pillLabel = isCooking ? '🔥 Cooking' : isHold ? '⏸ Hold' : '⏳ Queued';
+
+          return (
+            <div
+              key={item.id}
+              className={`kds-queue-card${isQueued ? ' kds-interactive' : ''}`}
+              draggable={isQueued}
+              data-item-id={item.id}
+              data-station={station}
+              onDragStart={isQueued ? e => {
+                e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, station }));
+                dragRef.current = { itemId: item.id, station };
+                (e.currentTarget as HTMLElement).classList.add('dragging');
+              } : undefined}
+              onDragEnd={isQueued ? e => {
+                (e.currentTarget as HTMLElement).classList.remove('dragging');
+                document.querySelectorAll('.kds-queue-card').forEach(el => el.classList.remove('drag-over'));
+              } : undefined}
+              onDragOver={isQueued ? e => {
+                e.preventDefault();
+                const fromData = dragRef.current;
+                if (fromData?.station === station) (e.currentTarget as HTMLElement).classList.add('drag-over');
+              } : undefined}
+              onDragLeave={isQueued ? e => { (e.currentTarget as HTMLElement).classList.remove('drag-over'); } : undefined}
+              onDrop={isQueued ? e => {
+                e.preventDefault();
+                (e.currentTarget as HTMLElement).classList.remove('drag-over');
+                try {
+                  const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                  if (data.station === station) onReorder(data.itemId, item.id, station);
+                } catch (_) {}
+              } : undefined}
+              style={{
+                padding: '6px 8px',
+                border: 'var(--kds-b)',
+                ...(accentBorderLeft ? { borderLeft: accentBorderLeft } : {}),
+                borderRadius: 'var(--kds-r)',
+                background: bgTint,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5,
+                cursor: isQueued ? 'grab' : 'default',
+                userSelect: 'none',
+                opacity: isHold ? 0.85 : 1,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--kds-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {item.qty}× {item.name}
+                  </span>
+                  {/* Status pill — always visible */}
+                  <span style={{
+                    fontSize: 8, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+                    padding: '2px 5px', borderRadius: 3,
+                    ...pillStyle,
+                  }}>
+                    {pillLabel}
+                  </span>
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--kds-graphite)', marginTop: 1 }}>
+                  [{ordNum(order.id)}] Due in: {fmtMSS(order.slaSecsRemaining)}
+                </div>
               </div>
-              <div style={{ fontSize: 9, color: 'var(--kds-graphite)', marginTop: 1 }}>
-                [{ordNum(order.id)}] Due in: {fmtMSS(order.slaSecsRemaining)}
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              {idx > 0 && (
-                <button
-                  className="kds-interactive"
-                  onClick={e => { e.stopPropagation(); onMoveUp(order.id, item.id); }}
-                  title="Move Up"
-                  style={{ padding: '2px 4px', border: 'var(--kds-b)', borderRadius: 3, background: 'var(--kds-linen)', fontSize: 9, fontWeight: 700, cursor: 'pointer', color: 'var(--kds-ink)' }}
-                >▲</button>
+              {/* Action buttons — only for Queued items */}
+              {isQueued && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                  {idx > 0 && (
+                    <button
+                      className="kds-interactive"
+                      onClick={e => { e.stopPropagation(); onMoveUp(order.id, item.id); }}
+                      title="Move Up"
+                      style={{ padding: '2px 4px', border: 'var(--kds-b)', borderRadius: 3, background: 'var(--kds-linen)', fontSize: 9, fontWeight: 700, cursor: 'pointer', color: 'var(--kds-ink)' }}
+                    >▲</button>
+                  )}
+                  {idx < queuedItems.length - 1 && (
+                    <button
+                      className="kds-interactive"
+                      onClick={e => { e.stopPropagation(); onMoveDown(order.id, item.id); }}
+                      title="Move Down"
+                      style={{ padding: '2px 4px', border: 'var(--kds-b)', borderRadius: 3, background: 'var(--kds-linen)', fontSize: 9, fontWeight: 700, cursor: 'pointer', color: 'var(--kds-ink)' }}
+                    >▼</button>
+                  )}
+                  <button
+                    className="kds-interactive"
+                    onClick={e => { e.stopPropagation(); onStartItem(order.id, item.id); }}
+                    style={{ padding: '3px 6px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', fontSize: 9, fontWeight: 700, cursor: 'pointer', background: 'transparent', color: 'var(--kds-oxblood)', fontFamily: 'var(--kds-font-ui)', textTransform: 'uppercase' }}
+                  >Prep</button>
+                  <button
+                    className={`kds-interactive ${isOver ? 'kds-suggest-hold' : ''}`}
+                    onClick={e => { e.stopPropagation(); onHoldItem(order.id, item.id); }}
+                    style={{ padding: '3px 6px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', fontSize: 9, fontWeight: 700, cursor: 'pointer', background: 'transparent', color: 'var(--kds-oxblood)', fontFamily: 'var(--kds-font-ui)', textTransform: 'uppercase' }}
+                  >Hold</button>
+                </div>
               )}
-              {idx < queuedItems.length - 1 && (
-                <button
-                  className="kds-interactive"
-                  onClick={e => { e.stopPropagation(); onMoveDown(order.id, item.id); }}
-                  title="Move Down"
-                  style={{ padding: '2px 4px', border: 'var(--kds-b)', borderRadius: 3, background: 'var(--kds-linen)', fontSize: 9, fontWeight: 700, cursor: 'pointer', color: 'var(--kds-ink)' }}
-                >▼</button>
-              )}
-              <button
-                className="kds-interactive"
-                onClick={e => { e.stopPropagation(); onStartItem(order.id, item.id); }}
-                style={{ padding: '3px 6px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', fontSize: 9, fontWeight: 700, cursor: 'pointer', background: 'transparent', color: 'var(--kds-oxblood)', fontFamily: 'var(--kds-font-ui)', textTransform: 'uppercase' }}
-              >Prep</button>
-              <button
-                className={`kds-interactive ${isOver ? 'kds-suggest-hold' : ''}`}
-                onClick={e => { e.stopPropagation(); onHoldItem(order.id, item.id); }}
-                style={{ padding: '3px 6px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', fontSize: 9, fontWeight: 700, cursor: 'pointer', background: 'transparent', color: 'var(--kds-oxblood)', fontFamily: 'var(--kds-font-ui)', textTransform: 'uppercase' }}
-              >Hold</button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
