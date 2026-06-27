@@ -406,7 +406,7 @@ export function KDSApp() {
     if (rider) rider.orderId = null;
 
     delete state.orders[orderId];
-    setUndoLabel(`⚠️ Order #${ordNum(orderId)} Cancelled by Customer — Items moved to Pool`);
+    setUndoLabel(`⚠️ Order #${ordNum(orderId)} Cancelled by Customer — Items moved to Up for Grabs`);
     playSound('slaWarn', state.soundEnabled);
     update();
   }

@@ -170,8 +170,8 @@ export function ActiveOrderCard(props: Props) {
           onClick={() => props.onConsumeCanceled(m.matchId, order.id, m.name)}
           style={{ padding: '5px 12px', background: 'rgba(217,119,6,0.08)', borderBottom: 'var(--kds-b)', fontSize: 10, fontWeight: 700, color: '#92400e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#d97706', color: '#fff', padding: '1px 5px', borderRadius: 3 }}>Pool</span>
-          Use {m.name} from Ready Items Pool? (Made {m.ageMins}m ago)
+          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#d97706', color: '#fff', padding: '1px 5px', borderRadius: 3 }}>Grabs</span>
+          Use {m.name} from Up for Grabs? (Made {m.ageMins}m ago)
         </div>
       ))}
 
@@ -270,7 +270,7 @@ function ItemRow({ item, orderId, stationLoad, hasPoolMatch }: {
           fontSize: 7, fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase',
           padding: '2px 4px', borderRadius: 3,
           background: '#d97706', color: '#fff', flexShrink: 0,
-        }}>↺ Pool</span>
+        }}>↺ Grabs</span>
       )}
 
       {/* Status displays */}

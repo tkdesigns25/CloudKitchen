@@ -534,12 +534,12 @@ function PoolItemsModal({ items, onUseItems, onCookFresh, onClose }: {
           </div>
         </div>
         <p style={{ fontSize: 12, color: 'var(--kds-graphite)', margin: 0, lineHeight: 1.5 }}>
-          These items are sitting in the Ready Items Pool. Use them for this order instead of cooking fresh? They'll be marked as ready immediately.
+          These items are sitting in Up for Grabs. Use them for this order instead of cooking fresh? They'll be marked as ready immediately.
         </p>
       </ModalBody>
       <ModalFoot>
         <GhostBtn onClick={onCookFresh} style={{ flex: 1, justifyContent: 'center' }}>Cook Fresh Instead</GhostBtn>
-        <OxBtn onClick={onUseItems} style={{ flex: 1, justifyContent: 'center', background: '#d97706', borderColor: '#d97706' }}>↺ Use Pool Items</OxBtn>
+        <OxBtn onClick={onUseItems} style={{ flex: 1, justifyContent: 'center', background: '#d97706', borderColor: '#d97706' }}>↺ Use Up for Grabs Items</OxBtn>
       </ModalFoot>
     </ModalShell>
   );

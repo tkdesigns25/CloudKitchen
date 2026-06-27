@@ -133,7 +133,7 @@ export function Column4({ canceledStock, currentSimSecs, orders, packedOrders, r
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--kds-graphite)' }}>
-              Ready Items Pool
+              Up for Grabs
             </span>
             {canceledStock.length > 0 && (
               <span style={{
@@ -151,7 +151,7 @@ export function Column4({ canceledStock, currentSimSecs, orders, packedOrders, r
 
         <div className="kds-scroll" style={{ flex: 1, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {canceledStock.length === 0 ? (
-            <EmptyState icon="♻" text="No items in pool" />
+            <EmptyState icon="♻" text="No items up for grabs" />
           ) : canceledStock.map(entry => {
             const ageSimSecs = currentSimSecs - entry.createdAtSimSecs;
             const remaining  = Math.max(0, POOL_EXPIRY_SECS - ageSimSecs);
