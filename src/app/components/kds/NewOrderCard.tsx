@@ -117,7 +117,7 @@ export function NewOrderCard({ order, oosItems, stationLoads, orders, canceledSt
       ))}
       {poolMatches.map(m => (
         <div key={m.matchId} style={{ padding: '5px 12px', background: 'rgba(217,119,6,0.08)', borderBottom: 'var(--kds-b)', fontSize: 10, color: '#92400e', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#d97706', color: '#fff', padding: '1px 5px', borderRadius: 3 }}>Pool</span>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#d97706', color: '#fff', padding: '1px 5px', borderRadius: 3 }}>Grabs</span>
           <strong>{m.name}</strong> ready — made {m.ageMins}m ago
         </div>
       ))}
@@ -153,7 +153,7 @@ export function NewOrderCard({ order, oosItems, stationLoads, orders, canceledSt
                       fontSize: 8, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
                       padding: '2px 5px', borderRadius: 3,
                       background: '#d97706', color: '#fff', flexShrink: 0,
-                    }}>↺ In Pool</span>
+                    }}>↺ Up for Grabs</span>
                   )}
                 </div>
               );

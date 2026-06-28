@@ -511,7 +511,7 @@ function PoolItemsModal({ items, onUseItems, onCookFresh, onClose }: {
 }) {
   return (
     <ModalShell onClose={onClose} width={440}>
-      <ModalHead title="Ready Items Available in Pool" onClose={onClose} />
+      <ModalHead title="Ready Items Available in Up for Grabs" onClose={onClose} />
       <ModalBody>
         <div style={{ padding: '10px 12px', background: 'rgba(217,119,6,0.08)', border: '1px solid #d97706', borderRadius: 'var(--kds-r)', marginBottom: 4 }}>
           <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#92400e', marginBottom: 8 }}>
