@@ -510,22 +510,22 @@ export function KDSApp() {
   function resumeApps() {
     const state = stateRef.current;
     state.pausedChannels = { Swiggy: false, Zomato: false, DirectApp: false };
-    state.pausedBrand    = 'All Brands';
+    state.pausedBrands   = { 'All Brands': true };
     state.pausedUntil    = null;
     update();
   }
 
-  function applyPause(channels: {Swiggy: boolean; Zomato: boolean; DirectApp: boolean}, brand: string, mins: number) {
+  function applyPause(channels: {Swiggy: boolean; Zomato: boolean; DirectApp: boolean}, brands: Record<string, boolean>, mins: number) {
     const state = stateRef.current;
     if (mins === 0) {
       resumeApps();
       return;
     }
     state.pausedChannels = channels;
-    state.pausedBrand    = brand;
+    state.pausedBrands   = brands;
     const anyPaused = Object.values(channels).some(v => v);
     state.pausedUntil = anyPaused ? (state.currentSimSecs || 0) + (mins * 60) : null;
-    if (!anyPaused) state.pausedBrand = 'All Brands';
+    if (!anyPaused) state.pausedBrands = { 'All Brands': true };
     update();
   }
 
@@ -675,7 +675,7 @@ export function KDSApp() {
         // Auto-clear pauses
         if (state.pausedUntil && state.currentSimSecs >= state.pausedUntil) {
           state.pausedChannels = { Swiggy: false, Zomato: false, DirectApp: false };
-          state.pausedBrand    = 'All Brands';
+          state.pausedBrands   = { 'All Brands': true };
           state.pausedUntil    = null;
         }
       }
@@ -824,7 +824,7 @@ export function KDSApp() {
     // Check if channel is paused or store is throttled
     if (state.throttleActive) return;
     if (state.pausedChannels[source]) {
-      if (state.pausedBrand === 'All Brands' || state.pausedBrand === brand) return;
+      if (state.pausedBrands?.['All Brands'] || state.pausedBrands?.[brand]) return;
     }
 
     const id    = nextOrderId();
@@ -905,7 +905,7 @@ export function KDSApp() {
         throttleActive={s.throttleActive}
         showPause={showPauseBanner}
         pausedList={pausedList}
-        pausedBrand={s.pausedBrand}
+        pausedBrands={s.pausedBrands}
         pausedRemaining={pausedRemaining}
         onReopen={() => setOpen(true)}
         onResumeApps={resumeApps}
@@ -1048,9 +1048,9 @@ export function KDSApp() {
 }
 
 // ── System Banners ─────────────────────────────────────────────
-function SystemBanners({ isOpen, throttleActive, showPause, pausedList, pausedBrand, pausedRemaining, onReopen, onResumeApps }: {
+function SystemBanners({ isOpen, throttleActive, showPause, pausedList, pausedBrands, pausedRemaining, onReopen, onResumeApps }: {
   isOpen: boolean; throttleActive: boolean; showPause: boolean;
-  pausedList: string[]; pausedBrand: string; pausedRemaining: number;
+  pausedList: string[]; pausedBrands: Record<string, boolean>; pausedRemaining: number;
   onReopen: () => void; onResumeApps: () => void;
 }) {
   const banners: React.ReactNode[] = [];
@@ -1078,12 +1078,12 @@ function SystemBanners({ isOpen, throttleActive, showPause, pausedList, pausedBr
   }
 
   if (showPause) {
-    const brandTxt = pausedBrand !== 'All Brands' ? ` [${pausedBrand}]` : '';
+    const pausedKeys = Object.keys(pausedBrands || {}).filter(k => k !== 'All Brands' && pausedBrands[k]);
+    const brandTxt = !pausedBrands?.['All Brands'] && pausedKeys.length > 0 ? ` [${pausedKeys.join(', ')}]` : '';
     banners.push(
       <div key="pause" role="alert" style={{ position: 'fixed', left: 0, right: 0, zIndex: 190, top, padding: '8px 16px', background: 'var(--kds-gold)', color: 'var(--kds-ink)', borderBottom: 'var(--kds-b)', display: 'flex', alignItems: 'center', gap: 12, fontWeight: 700, fontSize: 13 }}>
         <span style={{ fontSize: 18 }}>⏸</span>
         <span>Apps paused: {pausedList.join(', ')}{brandTxt} ({fmtMSS(pausedRemaining)} remaining)</span>
-        {/* BUG FIX #1: Resume Apps button is now properly wired */}
         <GhostBtn onClick={onResumeApps} style={{ marginLeft: 'auto', fontSize: 11 }}>Resume Apps</GhostBtn>
       </div>
     );

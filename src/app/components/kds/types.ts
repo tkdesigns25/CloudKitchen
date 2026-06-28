@@ -91,7 +91,7 @@ export interface KDSState {
   currentSimSecs: number;
   oosItems: Record<string, boolean>;
   pausedChannels: { Swiggy: boolean; Zomato: boolean; DirectApp: boolean };
-  pausedBrand: string;
+  pausedBrands: Record<string, boolean>;
   pausedUntil: number | null;
   rejectingOrderId: string | null;
   rejectReason: string | null;

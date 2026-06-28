@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { KDSOrder, AnalyticsData, KDSItem } from './types';
-import { BRANDS, REJECTION_REASONS, makeItem } from './config';
+import { BRANDS, REJECTION_REASONS, ITEM_BRAND, makeItem } from './config';
 import { OxBtn, GhostBtn } from './KDSApp';
 
 interface PoolItem { name: string; ageMins: number; matchId: string; }
@@ -26,7 +26,7 @@ interface ModalsProps {
   onClosePoolConfirm: () => void;
   onSelectRejectReason: (r: string) => void;
   onFinalizeReject: () => void;
-  onApplyPause: (channels: {Swiggy: boolean; Zomato: boolean; DirectApp: boolean}, brand: string, mins: number) => void;
+  onApplyPause: (channels: {Swiggy: boolean; Zomato: boolean; DirectApp: boolean}, brands: Record<string, boolean>, mins: number) => void;
   onSaveOos: (items: Record<string, boolean>) => void;
   onSubmitManualOrder: (params: { customer: string; platform: string; brand: string; items: KDSItem[]; notes: string }) => boolean;
   onPoolAcceptUseItems: () => void;
@@ -159,8 +159,24 @@ function RejectModal({ rejectReason, onCloseReject, onSelectRejectReason, onFina
 // ── Pause Modal ────────────────────────────────────────────────
 function PauseModal({ onClosePause, onApplyPause }: ModalsProps) {
   const [channels, setChannels] = useState({ Swiggy: true, Zomato: true, DirectApp: false });
-  const [brand, setBrand] = useState('All Brands');
+  const [brands, setBrands] = useState<Record<string, boolean>>({ 'All Brands': true, 'Burger Craft': true, 'Grill House': true, 'Bowl & Salad Co.': true });
   const [mins, setMins] = useState(15);
+
+  const allBrandKeys = Object.keys(BRANDS);
+
+  function toggleBrand(b: string) {
+    if (b === 'All Brands') {
+      const nextVal = !brands['All Brands'];
+      const nextMap: Record<string, boolean> = { 'All Brands': nextVal };
+      allBrandKeys.forEach(k => { nextMap[k] = nextVal; });
+      setBrands(nextMap);
+    } else {
+      const nextMap = { ...brands, [b]: !brands[b] };
+      const allSelected = allBrandKeys.every(k => nextMap[k]);
+      nextMap['All Brands'] = allSelected;
+      setBrands(nextMap);
+    }
+  }
 
   const platRows: Array<{ key: keyof typeof channels; label: string }> = [
     { key: 'Swiggy',    label: 'Swiggy' },
@@ -177,16 +193,34 @@ function PauseModal({ onClosePause, onApplyPause }: ModalsProps) {
   ];
 
   return (
-    <ModalShell onClose={onClosePause} width={440}>
+    <ModalShell onClose={onClosePause} width={460}>
       <ModalHead title="Stop Incoming Orders" onClose={onClosePause} />
       <ModalBody>
-        {/* Brand select */}
+        {/* Brand select (Multi-Select Buttons, No Dropdown!) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <SectionLabel>For which brand menu?</SectionLabel>
-          <KDSSelect value={brand} onChange={setBrand}>
-            <option value="All Brands">All Brands</option>
-            {Object.keys(BRANDS).map(b => <option key={b} value={b}>{b}</option>)}
-          </KDSSelect>
+          <SectionLabel>For which brand menus? (Select multiple)</SectionLabel>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {['All Brands', ...allBrandKeys].map(b => {
+              const checked = !!brands[b];
+              return (
+                <button
+                  key={b}
+                  type="button"
+                  className="kds-interactive"
+                  onClick={() => toggleBrand(b)}
+                  style={{
+                    padding: '6px 12px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)',
+                    background: checked ? 'var(--kds-oxblood)' : 'var(--kds-linen)',
+                    color: checked ? 'var(--kds-vellum)' : 'var(--kds-graphite)',
+                    borderColor: checked ? 'var(--kds-oxblood)' : undefined,
+                    fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 11, cursor: 'pointer',
+                  }}
+                >
+                  {checked ? '✓ ' : ''}{b}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Platform checkboxes */}
@@ -244,7 +278,7 @@ function PauseModal({ onClosePause, onApplyPause }: ModalsProps) {
       </ModalBody>
       <ModalFoot>
         <GhostBtn onClick={onClosePause}>Go Back</GhostBtn>
-        <OxBtn onClick={() => { onApplyPause(channels, brand, mins); onClosePause(); }}>
+        <OxBtn onClick={() => { onApplyPause(channels, brands, mins); onClosePause(); }}>
           {mins === 0 ? 'Resume All Apps' : 'Stop Orders Now'}
         </OxBtn>
       </ModalFoot>
@@ -343,20 +377,12 @@ function MenuModal({ oosItems, onCloseMenu, onSaveOos }: ModalsProps) {
 function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
   const [customer, setCustomer] = useState('');
   const [platform] = useState('DirectApp');
-  const [brand, setBrand] = useState(Object.keys(BRANDS)[0] || 'Burger Craft');
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
-  const brandData = BRANDS[brand] || Object.values(BRANDS)[0];
-
   function changeQty(name: string, val: number) {
     setQtys(prev => ({ ...prev, [name]: Math.max(0, Math.min(20, val)) }));
-  }
-
-  function changeBrand(b: string) {
-    setBrand(b);
-    setQtys({});
   }
 
   function submit() {
@@ -367,6 +393,9 @@ function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
     if (items.length === 0) { setError('Please add at least one item!'); return; }
     setError('');
 
+    const brandSet = [...new Set(items.map(i => ITEM_BRAND[i.name] || 'Burger Craft'))];
+    const brand = brandSet.length > 1 ? brandSet.join(' + ') : (brandSet[0] || 'Burger Craft');
+
     const ok = onSubmitManualOrder({
       customer: customer.trim() || 'Direct Customer',
       platform, brand, items, notes: notes.trim(),
@@ -375,29 +404,33 @@ function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
   }
 
   return (
-    <ModalShell onClose={onCloseNewOrder} width={560}>
+    <ModalShell onClose={onCloseNewOrder} width={580}>
       <ModalHead title="Add Order by Hand" onClose={onCloseNewOrder} />
       <ModalBody>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <FormRow label="Customer Name">
-            <KDSInput value={customer} onChange={setCustomer} placeholder="e.g. Rahul S." />
-          </FormRow>
-          <FormRow label="Which Brand?">
-            <KDSSelect value={brand} onChange={changeBrand}>
-              {Object.keys(BRANDS).map(b => <option key={b} value={b}>{b}</option>)}
-            </KDSSelect>
-          </FormRow>
-        </div>
-        <FormRow label="Select Items & Quantity">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {brandData.items.map(item => (
-              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-linen)' }}>
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--kds-ink)' }}>{item.name}</span>
-                <input
-                  type="number" min={0} max={20} value={qtys[item.name] ?? 0}
-                  onChange={e => changeQty(item.name, parseInt(e.target.value) || 0)}
-                  style={{ width: 48, padding: '3px 5px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-vellum)', fontFamily: 'var(--kds-font-ui)', fontSize: 13, fontWeight: 700, textAlign: 'center', color: 'var(--kds-ink)' }}
-                />
+        <FormRow label="Customer Name">
+          <KDSInput value={customer} onChange={setCustomer} placeholder="e.g. Rahul S." />
+        </FormRow>
+
+        <FormRow label="Select Items & Quantities Across Brands">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
+            {Object.entries(BRANDS).map(([brandName, brandData]) => (
+              <div key={brandName} style={{ border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', overflow: 'hidden', background: 'var(--kds-vellum)' }}>
+                <div style={{ background: brandData.color || 'var(--kds-oxblood)', color: '#fff', padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{brandName}</span>
+                  <span style={{ fontSize: 9, opacity: 0.8 }}>Station: {brandData.station}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, padding: 8, background: 'var(--kds-linen)' }}>
+                  {brandData.items.map(item => (
+                    <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-vellum)' }}>
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--kds-ink)' }}>{item.name}</span>
+                      <input
+                        type="number" min={0} max={20} value={qtys[item.name] ?? 0}
+                        onChange={e => changeQty(item.name, parseInt(e.target.value) || 0)}
+                        style={{ width: 44, padding: '2px 4px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-linen)', fontFamily: 'var(--kds-font-ui)', fontSize: 12, fontWeight: 700, textAlign: 'center', color: 'var(--kds-ink)' }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -406,7 +439,7 @@ function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
           <textarea
             value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="e.g. No onions, extra spicy..."
-            style={{ width: '100%', padding: '9px 12px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-linen)', fontFamily: 'var(--kds-font-ui)', fontSize: 14, color: 'var(--kds-ink)', resize: 'vertical', minHeight: 60 }}
+            style={{ width: '100%', padding: '9px 12px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-linen)', fontFamily: 'var(--kds-font-ui)', fontSize: 14, color: 'var(--kds-ink)', resize: 'vertical', minHeight: 55 }}
           />
         </FormRow>
         {error && <div style={{ color: 'var(--kds-red)', fontSize: 12, fontWeight: 700 }}>{error}</div>}
