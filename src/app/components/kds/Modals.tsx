@@ -377,6 +377,7 @@ function MenuModal({ oosItems, onCloseMenu, onSaveOos }: ModalsProps) {
 function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
   const [customer, setCustomer] = useState('');
   const [platform] = useState('DirectApp');
+  const [activeTab, setActiveTab] = useState(Object.keys(BRANDS)[0] || 'Burger Craft');
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
@@ -403,38 +404,70 @@ function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
     if (ok) onCloseNewOrder();
   }
 
+  const activeBrandData = BRANDS[activeTab] || Object.values(BRANDS)[0];
+
   return (
-    <ModalShell onClose={onCloseNewOrder} width={580}>
+    <ModalShell onClose={onCloseNewOrder} width={560}>
       <ModalHead title="Add Order by Hand" onClose={onCloseNewOrder} />
       <ModalBody>
         <FormRow label="Customer Name">
           <KDSInput value={customer} onChange={setCustomer} placeholder="e.g. Rahul S." />
         </FormRow>
 
-        <FormRow label="Select Items & Quantities Across Brands">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
-            {Object.entries(BRANDS).map(([brandName, brandData]) => (
-              <div key={brandName} style={{ border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', overflow: 'hidden', background: 'var(--kds-vellum)' }}>
-                <div style={{ background: brandData.color || 'var(--kds-oxblood)', color: '#fff', padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Brand Tabs */}
+        <div>
+          <SectionLabel>Select Brand Menu (Items stay selected across tabs)</SectionLabel>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, borderBottom: 'var(--kds-b)', paddingBottom: 6 }}>
+            {Object.entries(BRANDS).map(([brandName, brandData]) => {
+              const selectedCount = brandData.items.reduce((sum, item) => sum + (qtys[item.name] || 0), 0);
+              const isActive = activeTab === brandName;
+              return (
+                <button
+                  key={brandName}
+                  type="button"
+                  className="kds-interactive"
+                  onClick={() => setActiveTab(brandName)}
+                  style={{
+                    flex: 1, padding: '8px 10px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)',
+                    background: isActive ? 'var(--kds-oxblood)' : 'var(--kds-linen)',
+                    color: isActive ? 'var(--kds-vellum)' : 'var(--kds-ink)',
+                    borderColor: isActive ? 'var(--kds-oxblood)' : undefined,
+                    fontFamily: 'var(--kds-font-ui)', fontWeight: 700, fontSize: 12,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+                  }}
+                >
                   <span>{brandName}</span>
-                  <span style={{ fontSize: 9, opacity: 0.8 }}>Station: {brandData.station}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, padding: 8, background: 'var(--kds-linen)' }}>
-                  {brandData.items.map(item => (
-                    <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-vellum)' }}>
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--kds-ink)' }}>{item.name}</span>
-                      <input
-                        type="number" min={0} max={20} value={qtys[item.name] ?? 0}
-                        onChange={e => changeQty(item.name, parseInt(e.target.value) || 0)}
-                        style={{ width: 44, padding: '2px 4px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-linen)', fontFamily: 'var(--kds-font-ui)', fontSize: 12, fontWeight: 700, textAlign: 'center', color: 'var(--kds-ink)' }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                  {selectedCount > 0 && (
+                    <span style={{
+                      background: isActive ? 'var(--kds-vellum)' : 'var(--kds-oxblood)',
+                      color: isActive ? 'var(--kds-oxblood)' : 'var(--kds-vellum)',
+                      fontSize: 10, fontWeight: 900, padding: '1px 6px', borderRadius: 10,
+                    }}>
+                      {selectedCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Menu Items for Active Brand */}
+        <FormRow label={`${activeTab} Menu Items (${activeBrandData.station} Station)`}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            {activeBrandData.items.map(item => (
+              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-linen)' }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--kds-ink)' }}>{item.name}</span>
+                <input
+                  type="number" min={0} max={20} value={qtys[item.name] ?? 0}
+                  onChange={e => changeQty(item.name, parseInt(e.target.value) || 0)}
+                  style={{ width: 48, padding: '3px 5px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-vellum)', fontFamily: 'var(--kds-font-ui)', fontSize: 13, fontWeight: 700, textAlign: 'center', color: 'var(--kds-ink)' }}
+                />
               </div>
             ))}
           </div>
         </FormRow>
+
         <FormRow label="Any Special Instructions?">
           <textarea
             value={notes} onChange={e => setNotes(e.target.value)}
