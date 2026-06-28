@@ -343,12 +343,12 @@ function MenuModal({ oosItems, onCloseMenu, onSaveOos }: ModalsProps) {
 function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
   const [customer, setCustomer] = useState('');
   const [platform, setPlatform] = useState('Phone');
-  const [brand, setBrand] = useState('Hot');
+  const [brand, setBrand] = useState(Object.keys(BRANDS)[0] || 'Burger Craft');
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
-  const brandData = BRANDS[brand];
+  const brandData = BRANDS[brand] || Object.values(BRANDS)[0];
 
   function changeQty(name: string, val: number) {
     setQtys(prev => ({ ...prev, [name]: Math.max(0, Math.min(20, val)) }));
