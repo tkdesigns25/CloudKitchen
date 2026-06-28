@@ -389,7 +389,7 @@ function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
           </FormRow>
         </div>
         <FormRow label="Select Items & Quantity">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
             {brandData.items.map(item => (
               <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', border: 'var(--kds-b)', borderRadius: 'var(--kds-r)', background: 'var(--kds-linen)' }}>
                 <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--kds-ink)' }}>{item.name}</span>

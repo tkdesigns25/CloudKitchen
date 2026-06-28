@@ -791,25 +791,27 @@ export function KDSApp() {
   // ── Simulated Order Generator ─────────────────────────────────
   function generateSimulatedOrder() {
     const state = stateRef.current;
-    const allItems = Object.values(BRANDS).flatMap(d => d.items.map(i => ({ name: i.name })));
+    const brandNames = Object.keys(BRANDS);
+    const selectedBrand = brandNames[Math.floor(Math.random() * brandNames.length)];
+    const brandData = BRANDS[selectedBrand];
+
     const n = Math.floor(Math.random() * 3) + 2;
     const items: KDSItem[] = [];
     for (let i = 0; i < n; i++) {
-      const sel = allItems[Math.floor(Math.random() * allItems.length)];
+      const sel = brandData.items[Math.floor(Math.random() * brandData.items.length)];
       const modifier = Math.random() < 0.30 ? pickNote() : '';
       const existing = items.find(x => x.name === sel.name);
       if (existing) { existing.qty++; if (!existing.modifier && modifier) existing.modifier = modifier; }
       else items.push(makeItem(sel.name, 1, modifier));
     }
-    const brandsSet = [...new Set(items.map(i => ITEM_BRAND[i.name]))];
-    const brand     = brandsSet.join(' + ');
+    const brand  = selectedBrand;
     const sources: Array<'Swiggy' | 'Zomato' | 'DirectApp'> = ['Swiggy', 'Zomato', 'DirectApp'];
-    const source    = sources[Math.floor(Math.random() * sources.length)];
+    const source = sources[Math.floor(Math.random() * sources.length)];
 
     // Check if channel is paused or store is throttled
     if (state.throttleActive) return;
     if (state.pausedChannels[source]) {
-      if (state.pausedBrand === 'All Brands' || brandsSet.includes(state.pausedBrand)) return;
+      if (state.pausedBrand === 'All Brands' || state.pausedBrand === brand) return;
     }
 
     const id    = nextOrderId();
