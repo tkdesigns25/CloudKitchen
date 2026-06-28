@@ -342,7 +342,7 @@ function MenuModal({ oosItems, onCloseMenu, onSaveOos }: ModalsProps) {
 // ── New Order Modal (Manual) ───────────────────────────────────
 function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
   const [customer, setCustomer] = useState('');
-  const [platform, setPlatform] = useState('Phone');
+  const [platform] = useState('DirectApp');
   const [brand, setBrand] = useState(Object.keys(BRANDS)[0] || 'Burger Craft');
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [notes, setNotes] = useState('');
@@ -368,7 +368,7 @@ function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
     setError('');
 
     const ok = onSubmitManualOrder({
-      customer: customer.trim() || 'Phone Customer',
+      customer: customer.trim() || 'Direct Customer',
       platform, brand, items, notes: notes.trim(),
     });
     if (ok) onCloseNewOrder();
@@ -380,21 +380,14 @@ function NewOrderModal({ onCloseNewOrder, onSubmitManualOrder }: ModalsProps) {
       <ModalBody>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <FormRow label="Customer Name">
-            <KDSInput value={customer} onChange={setCustomer} placeholder="e.g. Table 5 / Rahul" />
+            <KDSInput value={customer} onChange={setCustomer} placeholder="e.g. Rahul S." />
           </FormRow>
-          <FormRow label="Order From">
-            <KDSSelect value={platform} onChange={setPlatform}>
-              <option value="Phone">Phone Order</option>
-              <option value="Swiggy">Swiggy</option>
-              <option value="Zomato">Zomato</option>
+          <FormRow label="Which Brand?">
+            <KDSSelect value={brand} onChange={changeBrand}>
+              {Object.keys(BRANDS).map(b => <option key={b} value={b}>{b}</option>)}
             </KDSSelect>
           </FormRow>
         </div>
-        <FormRow label="Which Brand?">
-          <KDSSelect value={brand} onChange={changeBrand}>
-            {Object.keys(BRANDS).map(b => <option key={b} value={b}>{b}</option>)}
-          </KDSSelect>
-        </FormRow>
         <FormRow label="Select Items & Quantity">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
             {brandData.items.map(item => (
